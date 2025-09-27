@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">AAVV Isla Plana</string>
+    <string name="welcome_message">Bienvenido a AAVV Isla Plana</string>
+    <string name="sync_in_progress">Sincronización en progreso...</string>
+    <string name="sync_complete">Sincronización completada</string>
+    <string name="sync_failed">Error en la sincronización</string>
+    <string name="retry_sync">Reintentar sincronización</string>
+    <string name="sync_data">Sincronizar Datos</string>
+    <string name="sync_status">Estado de Sincronización</string>
+    <string name="socios_activos">Socios Activos</string>
+    <string name="buscando_servidor">Buscando servidor...</string>
+    <string name="conectado_servidor">Conectado al servidor</string>
+    <string name="sin_conexion">Sin conexión</string>
+</resources>

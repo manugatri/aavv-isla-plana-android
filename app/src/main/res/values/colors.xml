@@ -1,0 +1,15 @@
+<resources>
+    <color name="primaryColor">#1a4a72</color>
+    <color name="primaryVariantColor">#0f3555</color>
+    <color name="secondaryColor">#2E86AB</color>
+    <color name="backgroundColor">#F8F9FA</color>
+    <color name="surfaceColor">#FFFFFF</color>
+    <color name="errorColor">#DC3545</color>
+    <color name="onPrimaryColor">#FFFFFF</color>
+    <color name="onSecondaryColor">#FFFFFF</color>
+    <color name="onBackgroundColor">#212529</color>
+    <color name="onSurfaceColor">#212529</color>
+    <color name="onErrorColor">#FFFFFF</color>
+    <color name="successColor">#28A745</color>
+    <color name="warningColor">#FFC107</color>
+</resources>

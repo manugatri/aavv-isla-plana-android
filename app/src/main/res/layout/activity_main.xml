@@ -1,0 +1,55 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/titleTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="@color/primaryColor"
+        android:layout_gravity="center"/>
+
+    <TextView
+        android:id="@+id/statusTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Iniciando..."
+        android:textSize="14sp"
+        android:layout_marginTop="16dp"
+        android:padding="12dp"
+        android:background="@drawable/status_background"
+        android:textAlignment="center"/>
+
+    <Button
+        android:id="@+id/syncButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sincronizar Ahora"
+        android:layout_marginTop="16dp"
+        android:background="@color/primaryColor"
+        android:textColor="@color/onPrimaryColor"
+        android:padding="12dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Socios Activos"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp"/>
+
+    <ListView
+        android:id="@+id/sociosListView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@color/primaryVariantColor"
+        android:dividerHeight="1dp"/>
+
+</LinearLayout>
