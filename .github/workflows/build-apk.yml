@@ -24,11 +24,30 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Verify Gradle setup
+      run: |
+        echo "Gradle wrapper properties:"
+        cat gradle/wrapper/gradle-wrapper.properties
+        echo "Gradlew permissions:"
+        ls -la gradlew
+        echo "Java version:"
+        java -version
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
     - name: Clean project
-      run: ./gradlew clean || ./gradle-8.0/bin/gradle clean
+      run: ./gradlew clean
 
     - name: Build debug APK
-      run: ./gradlew assembleDebug || ./gradle-8.0/bin/gradle assembleDebug
+      run: ./gradlew assembleDebug
 
     - name: List build outputs
       run: find . -name "*.apk" -type f
