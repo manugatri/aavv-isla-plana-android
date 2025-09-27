@@ -21,17 +21,31 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
 
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Verify Gradle setup
+    - name: Verify environment
       run: |
+        echo "=== ENVIRONMENT DIAGNOSTICS ==="
+        echo "Working directory:"
+        pwd
+        echo "Directory contents:"
+        ls -la
+        echo "Gradlew file:"
+        ls -la gradlew
+        echo "Gradlew content (first 10 lines):"
+        head -10 gradlew
         echo "Gradle wrapper properties:"
         cat gradle/wrapper/gradle-wrapper.properties
-        echo "Gradlew permissions:"
-        ls -la gradlew
         echo "Java version:"
         java -version
+        echo "Android SDK location:"
+        echo $ANDROID_SDK_ROOT
+        echo "PATH:"
+        echo $PATH
 
     - name: Cache Gradle packages
       uses: actions/cache@v3
@@ -42,6 +56,11 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
+
+    - name: Test gradlew execution
+      run: |
+        echo "Testing gradlew execution..."
+        ./gradlew --version
 
     - name: Clean project
       run: ./gradlew clean
