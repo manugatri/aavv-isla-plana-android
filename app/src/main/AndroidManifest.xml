@@ -21,21 +21,6 @@
             </intent-filter>
         </activity>
 
-        <activity 
-            android:name=".SociosActivity"
-            android:exported="false"
-            android:label="Gestión de Socios" />
-
-        <activity 
-            android:name=".AddSocioActivity"
-            android:exported="false"
-            android:label="Añadir Socio" />
-
-        <activity 
-            android:name=".PagosActivity"
-            android:exported="false"
-            android:label="Gestión de Pagos" />
-
     </application>
 
 </manifest>
