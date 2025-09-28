@@ -15,7 +15,7 @@ import java.util.*
 class SyncManager(private val context: Context) {
     
     private val dbHelper = DatabaseHelper(context)
-    private val baseUrl = "http://192.168.1.100:5000" // IP de la aplicación PC
+    private val baseUrl = "http://10.0.2.2:5001" // IP especial para emulador Android -> localhost:5001
     
     companion object {
         private const val TAG = "SyncManager"
@@ -64,7 +64,8 @@ class SyncManager(private val context: Context) {
             val responseCode = connection.responseCode
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
-                val jsonArray = JSONArray(response)
+                val jsonResponse = JSONObject(response)
+                val jsonArray = jsonResponse.getJSONArray("data")
                 
                 // Limpiar datos existentes
                 dbHelper.clearAllData()
@@ -73,33 +74,23 @@ class SyncManager(private val context: Context) {
                 for (i in 0 until jsonArray.length()) {
                     val jsonSocio = jsonArray.getJSONObject(i)
                     val socio = Socio(
-                        id = jsonSocio.optInt("Id", 0),
-                        numeroSocio = jsonSocio.optInt("NUMERO_SOCIO", 0),
-                        nombre = jsonSocio.optString("NOMBRE", ""),
-                        apellidos = jsonSocio.optString("APELLIDOS", ""),
-                        dni = jsonSocio.optString("DNI", ""),
-                        direccion = jsonSocio.optString("DIRECCION", ""),
-                        poblacion = jsonSocio.optString("POBLACION", ""),
-                        codigoPostal = jsonSocio.optString("CODIGO_POSTAL", ""),
-                        telefono = jsonSocio.optString("TELEFONO", ""),
-                        formaPago = jsonSocio.optString("FORMA_PAGP", ""),
-                        fechaAlta = jsonSocio.optString("FECHA_ALTA", ""),
-                        fechaBaja = jsonSocio.optString("FECHA_BAJA", ""),
+                        id = jsonSocio.optInt("id", 0),
+                        numeroSocio = jsonSocio.optString("numero_socio", "").toIntOrNull() ?: 0,
+                        nombre = jsonSocio.optString("nombre", ""),
+                        apellidos = jsonSocio.optString("apellidos", ""),
+                        dni = jsonSocio.optString("dni", ""),
+                        direccion = jsonSocio.optString("direccion", ""),
+                        poblacion = jsonSocio.optString("poblacion", ""),
+                        codigoPostal = jsonSocio.optString("codigo_postal", ""),
+                        telefono = jsonSocio.optString("telefono", ""),
+                        formaPago = "", // Se puede obtener de otro endpoint
+                        fechaAlta = jsonSocio.optString("fecha_alta", ""),
+                        fechaBaja = "",
                         email = jsonSocio.optString("email", ""),
-                        enAlta = jsonSocio.optInt("EN_ALTA", 1) == 1
+                        enAlta = jsonSocio.optBoolean("activo", true)
                     )
                     dbHelper.insertSocio(socio)
                 }
-                
-                Log.d(TAG, "Socios sincronizados: ${jsonArray.length()}")
-            } else {
-                throw Exception("Error del servidor: $responseCode")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sincronizando socios", e)
-            throw e
-        }
-    }
     
     private fun syncPagos() {
         try {
@@ -112,16 +103,17 @@ class SyncManager(private val context: Context) {
             val responseCode = connection.responseCode
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
-                val jsonArray = JSONArray(response)
+                val jsonResponse = JSONObject(response)
+                val jsonArray = jsonResponse.getJSONArray("data")
                 
                 // Insertar pagos
                 for (i in 0 until jsonArray.length()) {
                     val jsonPago = jsonArray.getJSONObject(i)
                     val pago = Pago(
-                        id = jsonPago.optInt("Id", 0),
-                        fecha = jsonPago.optString("FECHA", ""),
-                        importe = jsonPago.optDouble("IMPORTE", 0.0),
-                        idNumeroSocio = jsonPago.optInt("ID_NUMERO_SOCIO", 0)
+                        id = jsonPago.optInt("id", 0),
+                        fecha = jsonPago.optString("fecha_pago", ""),
+                        importe = jsonPago.optDouble("importe", 0.0),
+                        idNumeroSocio = jsonPago.optInt("socio_id", 0)
                     )
                     dbHelper.insertPago(pago)
                 }
@@ -143,7 +135,7 @@ class SyncManager(private val context: Context) {
     
     fun testConnection(): Boolean {
         return try {
-            val url = URL("$baseUrl/")
+            val url = URL("$baseUrl/api/health")
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000
