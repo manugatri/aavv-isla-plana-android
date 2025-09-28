@@ -1,40 +1,8 @@
 package com.aavv.islaplana
 
 import android.app.Activity
-import android.os.Bund    private fun loadSociosData() {
-        try {
-            // Cargar socios desde la base de datos
-            val socios = databaseHelper.getAllSocios()
-            sociosList.clear()
-            
-            if (socios.isEmpty()) {
-                // Base de datos vacía - esperando primera sincronización
-                sociosList.add("🔄 Base de datos vacía")
-                sociosList.add("📱 Realiza sincronización para descargar datos del PC")
-                updateStatus("⏳ Esperando primera sincronización con servidor PC")
-            } else {
-                // Mostrar socios existentes
-                for (socio in socios) {
-                    val status = if (socio.activo) "✅ Activo" else "❌ Inactivo" 
-                    val telefono = if (socio.telefono.isNotEmpty()) " - 📱 ${socio.telefono}" else ""
-                    sociosList.add("👤 ${socio.nombre} ${socio.apellidos} - $status$telefono")
-                }
-                updateStatus("📊 ${socios.size} socios cargados desde la base de datos")
-            }
-            
-            sociosAdapter.notifyDataSetChanged()
-            
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error cargando socios", e)
-            updateStatus("❌ Error cargando datos - Verificar base de datos")
-            sociosList.clear()
-            sociosList.add("❌ Error cargando datos")
-            sociosList.add("🔧 Verificar configuración de base de datos")
-            sociosAdapter.notifyDataSetChanged()
-        }
-    }
-    
-ndroid.widget.*
+import android.os.Bundle
+import android.widget.*
 import android.view.View
 import android.util.Log
 import android.content.Intent
@@ -48,14 +16,6 @@ class MainActivity : Activity() {
     private lateinit var statusTextView: TextView
     private lateinit var syncButton: Button
     private lateinit var sociosListView: ListView
-    
-    // Botones del menú principal
-    private lateinit var btnListaSocios: Button
-    private lateinit var btnAgregarSocio: Button  
-    private lateinit var btnBuscarSocio: Button
-    private lateinit var btnCuotasVencidas: Button
-    private lateinit var btnCuotasPorVencer: Button
-    private lateinit var btnCuotasCobradas: Button
     
     // Base de datos
     private lateinit var databaseHelper: DatabaseHelper
@@ -103,21 +63,39 @@ class MainActivity : Activity() {
         // Configurar adapter para la lista
         sociosAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, sociosList)
         sociosListView.adapter = sociosAdapter
-        
-        // TODO: Inicializar botones del menú cuando los agregue al layout
-        // Por ahora usamos Toast para las funcionalidades
     }
     
-    private fun setupSampleData() {
-        // Datos de ejemplo para mostrar funcionalidad
-        sociosList.addAll(listOf(
-            "👤 María García López - Activo",
-            "👤 José Martínez Ruiz - Activo", 
-            "� Carmen Sánchez Torres - Activo",
-            "👤 Francisco López García - Activo",
-            "👤 Ana Rodríguez Pérez - Activo"
-        ))
-        sociosAdapter.notifyDataSetChanged()
+    private fun loadSociosData() {
+        try {
+            // Cargar socios desde la base de datos
+            val socios = databaseHelper.getAllSocios()
+            sociosList.clear()
+            
+            if (socios.isEmpty()) {
+                // Base de datos vacía - esperando primera sincronización
+                sociosList.add("🔄 Base de datos vacía")
+                sociosList.add("📱 Realiza sincronización para descargar datos del PC")
+                updateStatus("⏳ Esperando primera sincronización con servidor PC")
+            } else {
+                // Mostrar socios existentes
+                for (socio in socios) {
+                    val status = if (socio.activo) "✅ Activo" else "❌ Inactivo" 
+                    val telefono = if (socio.telefono.isNotEmpty()) " - 📱 ${socio.telefono}" else ""
+                    sociosList.add("👤 ${socio.nombre} ${socio.apellidos} - $status$telefono")
+                }
+                updateStatus("📊 ${socios.size} socios cargados desde la base de datos")
+            }
+            
+            sociosAdapter.notifyDataSetChanged()
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error cargando socios", e)
+            updateStatus("❌ Error cargando datos - Verificar base de datos")
+            sociosList.clear()
+            sociosList.add("❌ Error cargando datos")
+            sociosList.add("🔧 Verificar configuración de base de datos")
+            sociosAdapter.notifyDataSetChanged()
+        }
     }
     
     private fun setupListeners() {
@@ -136,6 +114,41 @@ class MainActivity : Activity() {
             showMainMenu()
             true
         }
+    }
+    
+    private fun performSync() {
+        updateStatus("🔄 Conectando con servidor PC...")
+        syncButton.isEnabled = false
+        
+        // Intentar sincronización con servidor PC
+        syncButton.postDelayed({
+            try {
+                // TODO: Implementar conexión real con servidor PC (localhost:5000)
+                // Por ahora simular intento de conexión
+                
+                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                
+                // Recargar datos desde la base de datos
+                loadSociosData()
+                
+                // Simular resultado basado en si ya hay datos
+                val socios = databaseHelper.getAllSocios()
+                if (socios.isEmpty()) {
+                    updateStatus("⚠️ No se pudo conectar con servidor PC - $timestamp")
+                    Toast.makeText(this, "🔌 Verificar que el servidor PC esté activo en localhost:5000", Toast.LENGTH_LONG).show()
+                } else {
+                    updateStatus("✅ Sincronización completada - $timestamp")
+                    Toast.makeText(this, "✅ Datos sincronizados correctamente", Toast.LENGTH_SHORT).show()
+                }
+                
+            } catch (e: Exception) {
+                updateStatus("❌ Error en sincronización - ${e.message}")
+                Toast.makeText(this, "❌ Error de conexión: ${e.message}", Toast.LENGTH_LONG).show()
+                Log.e("MainActivity", "Error en sincronización", e)
+            } finally {
+                syncButton.isEnabled = true
+            }
+        }, 3000) // 3 segundos para simular intento de conexión real
     }
     
     private fun showMainMenu() {
@@ -206,41 +219,6 @@ class MainActivity : Activity() {
         }
         builder.setNegativeButton("Cancelar", null)
         builder.show()
-    }
-    
-    private fun performSync() {
-        updateStatus("🔄 Conectando con servidor PC...")
-        syncButton.isEnabled = false
-        
-        // Intentar sincronización con servidor PC
-        syncButton.postDelayed({
-            try {
-                // TODO: Implementar conexión real con servidor PC (localhost:5000)
-                // Por ahora simular intento de conexión
-                
-                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                
-                // Recargar datos desde la base de datos
-                loadSociosData()
-                
-                // Simular resultado basado en si ya hay datos
-                val socios = databaseHelper.getAllSocios()
-                if (socios.isEmpty()) {
-                    updateStatus("⚠️ No se pudo conectar con servidor PC - $timestamp")
-                    Toast.makeText(this, "🔌 Verificar que el servidor PC esté activo en localhost:5000", Toast.LENGTH_LONG).show()
-                } else {
-                    updateStatus("✅ Sincronización completada - $timestamp")
-                    Toast.makeText(this, "✅ Datos sincronizados correctamente", Toast.LENGTH_SHORT).show()
-                }
-                
-            } catch (e: Exception) {
-                updateStatus("❌ Error en sincronización - ${e.message}")
-                Toast.makeText(this, "❌ Error de conexión: ${e.message}", Toast.LENGTH_LONG).show()
-                Log.e("MainActivity", "Error en sincronización", e)
-            } finally {
-                syncButton.isEnabled = true
-            }
-        }, 3000) // 3 segundos para simular intento de conexión real
     }
     
     // === FUNCIONALIDADES DEL PC ===
