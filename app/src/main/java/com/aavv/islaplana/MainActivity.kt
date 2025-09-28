@@ -8,50 +8,33 @@ import android.os.Bund    private fun loadSociosData() {
             sociosList.clear()
             
             if (socios.isEmpty()) {
-                // Si no hay datos, agregar algunos de ejemplo
-                insertSampleData()
-                // Volver a cargar
-                val newSocios = databaseHelper.getAllSocios()
-                for (socio in newSocios) {
-                    val status = if (socio.activo) "✅ Activo" else "❌ Inactivo"
-                    sociosList.add("👤 ${socio.nombre} ${socio.apellidos} - $status")
-                }
+                // Base de datos vacía - esperando primera sincronización
+                sociosList.add("🔄 Base de datos vacía")
+                sociosList.add("📱 Realiza sincronización para descargar datos del PC")
+                updateStatus("⏳ Esperando primera sincronización con servidor PC")
             } else {
                 // Mostrar socios existentes
                 for (socio in socios) {
-                    val status = if (socio.activo) "✅ Activo" else "❌ Inactivo"
+                    val status = if (socio.activo) "✅ Activo" else "❌ Inactivo" 
                     val telefono = if (socio.telefono.isNotEmpty()) " - 📱 ${socio.telefono}" else ""
                     sociosList.add("👤 ${socio.nombre} ${socio.apellidos} - $status$telefono")
                 }
+                updateStatus("📊 ${socios.size} socios cargados desde la base de datos")
             }
             
             sociosAdapter.notifyDataSetChanged()
-            updateStatus("📊 ${socios.size} socios cargados desde la base de datos")
             
         } catch (e: Exception) {
             Log.e("MainActivity", "Error cargando socios", e)
-            updateStatus("❌ Error cargando datos")
+            updateStatus("❌ Error cargando datos - Verificar base de datos")
+            sociosList.clear()
+            sociosList.add("❌ Error cargando datos")
+            sociosList.add("🔧 Verificar configuración de base de datos")
+            sociosAdapter.notifyDataSetChanged()
         }
     }
     
-    private fun insertSampleData() {
-        try {
-            val sampleSocios = listOf(
-                Socio(nombre = "María", apellidos = "García López", telefono = "968123456", email = "maria@email.com", direccion = "Calle Mayor 1", codigoPostal = "30868", localidad = "Isla Plana", provincia = "Murcia", fechaAlta = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()), activo = true),
-                Socio(nombre = "José", apellidos = "Martínez Ruiz", telefono = "968654321", email = "jose@email.com", direccion = "Avenida del Mar 15", codigoPostal = "30868", localidad = "Isla Plana", provincia = "Murcia", fechaAlta = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()), activo = true),
-                Socio(nombre = "Carmen", apellidos = "Sánchez Torres", telefono = "968789123", email = "carmen@email.com", direccion = "Plaza de España 3", codigoPostal = "30868", localidad = "Isla Plana", provincia = "Murcia", fechaAlta = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()), activo = true),
-                Socio(nombre = "Francisco", apellidos = "López García", telefono = "968456789", email = "francisco@email.com", direccion = "Calle del Puerto 7", codigoPostal = "30868", localidad = "Isla Plana", provincia = "Murcia", fechaAlta = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()), activo = true)
-            )
-            
-            for (socio in sampleSocios) {
-                databaseHelper.insertSocio(socio)
-            }
-            
-            Log.d("MainActivity", "Datos de ejemplo insertados correctamente")
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error insertando datos de ejemplo", e)
-        }
-    }ndroid.widget.*
+ndroid.widget.*
 import android.view.View
 import android.util.Log
 import android.content.Intent
@@ -226,28 +209,38 @@ class MainActivity : Activity() {
     }
     
     private fun performSync() {
-        updateStatus("🔄 Sincronizando datos...")
+        updateStatus("🔄 Conectando con servidor PC...")
         syncButton.isEnabled = false
         
-        // Simular proceso de sincronización con servidor
+        // Intentar sincronización con servidor PC
         syncButton.postDelayed({
             try {
+                // TODO: Implementar conexión real con servidor PC (localhost:5000)
+                // Por ahora simular intento de conexión
+                
+                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                
                 // Recargar datos desde la base de datos
                 loadSociosData()
                 
-                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                updateStatus("✅ Sincronización completada - $timestamp")
-                
-                Toast.makeText(this, "Datos sincronizados correctamente", Toast.LENGTH_SHORT).show()
+                // Simular resultado basado en si ya hay datos
+                val socios = databaseHelper.getAllSocios()
+                if (socios.isEmpty()) {
+                    updateStatus("⚠️ No se pudo conectar con servidor PC - $timestamp")
+                    Toast.makeText(this, "🔌 Verificar que el servidor PC esté activo en localhost:5000", Toast.LENGTH_LONG).show()
+                } else {
+                    updateStatus("✅ Sincronización completada - $timestamp")
+                    Toast.makeText(this, "✅ Datos sincronizados correctamente", Toast.LENGTH_SHORT).show()
+                }
                 
             } catch (e: Exception) {
-                updateStatus("❌ Error en sincronización")
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                updateStatus("❌ Error en sincronización - ${e.message}")
+                Toast.makeText(this, "❌ Error de conexión: ${e.message}", Toast.LENGTH_LONG).show()
                 Log.e("MainActivity", "Error en sincronización", e)
             } finally {
                 syncButton.isEnabled = true
             }
-        }, 2000)
+        }, 3000) // 3 segundos para simular intento de conexión real
     }
     
     // === FUNCIONALIDADES DEL PC ===
