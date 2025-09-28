@@ -8,8 +8,16 @@ import android.util.Log
 import android.content.Intent
 import com.aavv.islaplana.database.DatabaseHelper
 import com.aavv.islaplana.database.Socio
+import com.aavv.islaplana.database.Pago
 import java.text.SimpleDateFormat
 import java.util.*
+import java.net.URL
+import java.net.HttpURLConnection
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
     
@@ -120,35 +128,146 @@ class MainActivity : Activity() {
         updateStatus("🔄 Conectando con servidor PC...")
         syncButton.isEnabled = false
         
-        // Intentar sincronización con servidor PC
-        syncButton.postDelayed({
+        // Ejecutar sincronización en hilo separado
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
             try {
-                // TODO: Implementar conexión real con servidor PC (localhost:5000)
-                // Por ahora simular intento de conexión
-                
-                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                
-                // Recargar datos desde la base de datos
-                loadSociosData()
-                
-                // Simular resultado basado en si ya hay datos
-                val socios = databaseHelper.getAllSocios()
-                if (socios.isEmpty()) {
-                    updateStatus("⚠️ No se pudo conectar con servidor PC - $timestamp")
-                    Toast.makeText(this, "🔌 Verificar que el servidor PC esté activo en localhost:5000", Toast.LENGTH_LONG).show()
-                } else {
-                    updateStatus("✅ Sincronización completada - $timestamp")
-                    Toast.makeText(this, "✅ Datos sincronizados correctamente", Toast.LENGTH_SHORT).show()
-                }
-                
+                syncWithPCServer()
             } catch (e: Exception) {
-                updateStatus("❌ Error en sincronización - ${e.message}")
-                Toast.makeText(this, "❌ Error de conexión: ${e.message}", Toast.LENGTH_LONG).show()
-                Log.e("MainActivity", "Error en sincronización", e)
-            } finally {
+                runOnUiThread {
+                    val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                    updateStatus("❌ Error en sincronización - $timestamp")
+                    Toast.makeText(this, "❌ Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    Log.e("MainActivity", "Error en sincronización", e)
+                    syncButton.isEnabled = true
+                }
+            }
+        }
+    }
+    
+    private fun syncWithPCServer() {
+        try {
+            // Intentar conexión con el servidor PC
+            val serverUrl = "http://192.168.1.107:5000" // IP del servidor PC en red local
+            
+            runOnUiThread {
+                updateStatus("🌐 Conectando con servidor PC (${serverUrl})...")
+            }
+            
+            // Descargar socios
+            val sociosJson = makeHttpRequest("${serverUrl}/api/socios")
+            if (sociosJson != null) {
+                processSociosData(sociosJson)
+            }
+            
+            // Descargar pagos
+            val pagosJson = makeHttpRequest("${serverUrl}/api/pagos")
+            if (pagosJson != null) {
+                processPagosData(pagosJson)
+            }
+            
+            runOnUiThread {
+                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                updateStatus("✅ Sincronización completada - $timestamp")
+                Toast.makeText(this, "✅ Datos sincronizados desde servidor PC", Toast.LENGTH_SHORT).show()
+                loadSociosData() // Recargar la vista
                 syncButton.isEnabled = true
             }
-        }, 3000) // 3 segundos para simular intento de conexión real
+            
+        } catch (e: Exception) {
+            runOnUiThread {
+                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                updateStatus("⚠️ No se pudo conectar - $timestamp")
+                Toast.makeText(this, "🔌 Verificar:\n• Servidor PC activo\n• Misma red WiFi\n• Puerto 5000 abierto", Toast.LENGTH_LONG).show()
+                Log.e("MainActivity", "Error conectando con servidor PC", e)
+                syncButton.isEnabled = true
+            }
+        }
+    }
+    
+    private fun makeHttpRequest(urlString: String): String? {
+        return try {
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000 // 5 segundos timeout
+            connection.readTimeout = 10000 // 10 segundos timeout
+            
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val reader = BufferedReader(InputStreamReader(connection.inputStream))
+                val response = reader.readText()
+                reader.close()
+                response
+            } else {
+                Log.e("MainActivity", "HTTP Error: $responseCode")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error en HTTP request", e)
+            null
+        }
+    }
+    
+    private fun processSociosData(jsonString: String) {
+        try {
+            val jsonArray = JSONArray(jsonString)
+            var sociosSincronizados = 0
+            
+            for (i in 0 until jsonArray.length()) {
+                val socioJson = jsonArray.getJSONObject(i)
+                val socio = Socio(
+                    id = socioJson.optInt("id", 0),
+                    numeroSocio = socioJson.optInt("numero_socio", 0),
+                    nombre = socioJson.optString("nombre", ""),
+                    apellidos = socioJson.optString("apellidos", ""),
+                    dni = socioJson.optString("dni", ""),
+                    direccion = socioJson.optString("direccion", ""),
+                    poblacion = socioJson.optString("poblacion", ""),
+                    codigoPostal = socioJson.optString("codigo_postal", ""),
+                    telefono = socioJson.optString("telefono", ""),
+                    formaPago = socioJson.optString("forma_pago", ""),
+                    fechaAlta = socioJson.optString("fecha_alta", ""),
+                    fechaBaja = socioJson.optString("fecha_baja", ""),
+                    email = socioJson.optString("email", ""),
+                    enAlta = socioJson.optBoolean("en_alta", true)
+                )
+                
+                databaseHelper.insertSocio(socio)
+                sociosSincronizados++
+            }
+            
+            Log.d("MainActivity", "Sincronizados $sociosSincronizados socios")
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error procesando datos de socios", e)
+        }
+    }
+    
+    private fun processPagosData(jsonString: String) {
+        try {
+            val jsonArray = JSONArray(jsonString)
+            var pagosSincronizados = 0
+            
+            for (i in 0 until jsonArray.length()) {
+                val pagoJson = jsonArray.getJSONObject(i)
+                val pago = Pago(
+                    id = pagoJson.optInt("id", 0),
+                    fecha = pagoJson.optString("fecha", ""),
+                    importe = pagoJson.optDouble("importe", 0.0),
+                    idNumeroSocio = pagoJson.optInt("id_numero_socio", 0),
+                    nombreSocio = pagoJson.optString("nombre_socio", "")
+                )
+                
+                databaseHelper.insertPago(pago)
+                pagosSincronizados++
+            }
+            
+            Log.d("MainActivity", "Sincronizados $pagosSincronizados pagos")
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error procesando datos de pagos", e)
+        }
     }
     
     private fun showMainMenu() {
