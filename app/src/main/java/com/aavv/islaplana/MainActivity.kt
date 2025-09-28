@@ -6,6 +6,7 @@ import android.widget.*
 import android.view.View
 import android.util.Log
 import android.content.Intent
+import android.content.Context
 import com.aavv.islaplana.database.DatabaseHelper
 import com.aavv.islaplana.database.Socio
 import com.aavv.islaplana.database.Pago
@@ -56,10 +57,30 @@ class MainActivity : Activity() {
             
             Log.d("MainActivity", "AAVV Isla Plana iniciada exitosamente con todas las funcionalidades")
             
+            // Mostrar información de red para debugging
+            logNetworkInfo()
+            
         } catch (e: Exception) {
             Log.e("MainActivity", "Error en onCreate", e)
             // Fallback a versión simple en caso de error
             showSimpleFallback(e)
+        }
+    }
+    
+    private fun logNetworkInfo() {
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val activeNetwork = connectivityManager.activeNetworkInfo
+            
+            if (activeNetwork != null && activeNetwork.isConnected) {
+                Log.d("MainActivity", "🌐 Red activa: ${activeNetwork.typeName} - ${activeNetwork.subtypeName}")
+                Log.d("MainActivity", "🔗 Conectado: ${activeNetwork.isConnected}")
+                Log.d("MainActivity", "🌍 Internet disponible: ${activeNetwork.isAvailable}")
+            } else {
+                Log.w("MainActivity", "⚠️ Sin conexión de red activa")
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error obteniendo info de red", e)
         }
     }
     
@@ -147,30 +168,61 @@ class MainActivity : Activity() {
     
     private fun syncWithPCServer() {
         try {
-            // Intentar conexión con el servidor PC
-            val serverUrl = "http://192.168.1.107:5000" // IP del servidor PC en red local
+            // Lista de URLs del servidor PC para probar (diferentes configuraciones de red)
+            val possibleServerUrls = listOf(
+                "http://192.168.1.107:5000",  // IP actual de red local
+                "http://10.0.2.2:5000",       // Emulador Android (localhost mapping)
+                "http://127.0.0.1:5000",      // Localhost directo
+                "http://192.168.0.107:5000",  // Posible IP alternativa
+                "http://192.168.1.1:5000"     // Gateway como fallback
+            )
             
-            Log.d("MainActivity", "🚀 INICIANDO SINCRONIZACIÓN con: $serverUrl")
+            var serverUrl: String? = null
+            var statusJson: String? = null
+            
+            Log.d("MainActivity", "🚀 INICIANDO SINCRONIZACIÓN - Probando conexiones...")
             
             runOnUiThread {
-                updateStatus("🌐 Conectando con servidor PC (${serverUrl})...")
+                updateStatus("🔍 Buscando servidor PC en la red...")
             }
             
-            // Probar conexión primero
-            Log.d("MainActivity", "📡 Probando conexión con /api/status")
-            val statusJson = makeHttpRequest("${serverUrl}/api/status")
-            Log.d("MainActivity", "📡 Respuesta status: $statusJson")
-            
-            if (statusJson == null) {
-                throw Exception("No se puede conectar al servidor PC en $serverUrl")
+            // Probar cada URL hasta encontrar una que funcione
+            for (url in possibleServerUrls) {
+                Log.d("MainActivity", "📡 Probando conexión con: $url")
+                runOnUiThread {
+                    updateStatus("🔍 Probando: $url")
+                }
+                
+                statusJson = makeHttpRequest("$url/api/status")
+                if (statusJson != null) {
+                    serverUrl = url
+                    Log.d("MainActivity", "✅ Conexión exitosa con: $url")
+                    Log.d("MainActivity", "📡 Respuesta status: $statusJson")
+                    break
+                } else {
+                    Log.d("MainActivity", "❌ Falló conexión con: $url")
+                }
             }
+            
+            if (serverUrl == null || statusJson == null) {
+                throw Exception("No se puede conectar al servidor PC. Verifique:\n• Servidor ejecutándose\n• Misma red WiFi\n• Puerto 5000 abierto")
+            }
+            
+            runOnUiThread {
+                updateStatus("🌐 Conectado al servidor: $serverUrl")
+            }
+            
+            var sociosSincronizados = 0
+            var pagosSincronizados = 0
             
             // Descargar socios
             Log.d("MainActivity", "👥 Descargando socios...")
             val sociosJson = makeHttpRequest("${serverUrl}/api/socios")
             Log.d("MainActivity", "👥 Respuesta socios: ${sociosJson?.take(100) ?: "NULL"}")
             if (sociosJson != null) {
-                processSociosData(sociosJson)
+                sociosSincronizados = processSociosData(sociosJson)
+            } else {
+                throw Exception("No se pudieron descargar los socios del servidor")
             }
             
             // Descargar pagos
@@ -178,13 +230,16 @@ class MainActivity : Activity() {
             val pagosJson = makeHttpRequest("${serverUrl}/api/pagos")
             Log.d("MainActivity", "💰 Respuesta pagos: ${pagosJson?.take(100) ?: "NULL"}")
             if (pagosJson != null) {
-                processPagosData(pagosJson)
+                pagosSincronizados = processPagosData(pagosJson)
+            } else {
+                throw Exception("No se pudieron descargar los pagos del servidor")
             }
             
             runOnUiThread {
                 val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                updateStatus("✅ Sincronización completada - $timestamp")
-                Toast.makeText(this, "✅ Datos sincronizados desde servidor PC", Toast.LENGTH_SHORT).show()
+                val mensaje = "✅ Sincronizados: $sociosSincronizados socios, $pagosSincronizados pagos"
+                updateStatus("$mensaje - $timestamp")
+                Toast.makeText(this@MainActivity, mensaje, Toast.LENGTH_LONG).show()
                 loadSociosData() // Recargar la vista
                 syncButton.isEnabled = true
             }
@@ -206,14 +261,17 @@ class MainActivity : Activity() {
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
-            connection.connectTimeout = 10000 // 10 segundos timeout
-            connection.readTimeout = 15000 // 15 segundos timeout
-            connection.setRequestProperty("User-Agent", "AAVV-Android-App")
+            connection.connectTimeout = 20000 // 20 segundos timeout (más tiempo)
+            connection.readTimeout = 30000 // 30 segundos timeout (más tiempo)
+            connection.setRequestProperty("User-Agent", "AAVV-Android-App/1.0")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Cache-Control", "no-cache")
             
             Log.d("MainActivity", "🔗 Conectando a: ${connection.url}")
+            Log.d("MainActivity", "⏱️ Timeouts: Connect=20s, Read=30s")
             
             val responseCode = connection.responseCode
-            Log.d("MainActivity", "📡 Response Code: $responseCode")
+            Log.d("MainActivity", "📡 Response Code: $responseCode para $urlString")
             
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val reader = BufferedReader(InputStreamReader(connection.inputStream))
@@ -240,10 +298,14 @@ class MainActivity : Activity() {
         }
     }
     
-    private fun processSociosData(jsonString: String) {
-        try {
+    private fun processSociosData(jsonString: String): Int {
+        return try {
+            Log.d("MainActivity", "📊 Procesando JSON socios: ${jsonString.take(100)}...")
             val jsonArray = JSONArray(jsonString)
             var sociosSincronizados = 0
+            
+            // Limpiar datos previos para sincronización completa
+            databaseHelper.clearSocios()
             
             for (i in 0 until jsonArray.length()) {
                 val socioJson = jsonArray.getJSONObject(i)
@@ -257,7 +319,7 @@ class MainActivity : Activity() {
                     poblacion = socioJson.optString("poblacion", ""),
                     codigoPostal = socioJson.optString("codigo_postal", ""),
                     telefono = socioJson.optString("telefono", ""),
-                    formaPago = socioJson.optString("forma_pago", ""),
+                    formaPago = socioJson.optString("FORMA_PAGP", ""),
                     fechaAlta = socioJson.optString("fecha_alta", ""),
                     fechaBaja = socioJson.optString("fecha_baja", ""),
                     email = socioJson.optString("email", ""),
@@ -268,17 +330,23 @@ class MainActivity : Activity() {
                 sociosSincronizados++
             }
             
-            Log.d("MainActivity", "Sincronizados $sociosSincronizados socios")
+            Log.d("MainActivity", "✅ Sincronizados $sociosSincronizados socios")
+            sociosSincronizados
             
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error procesando datos de socios", e)
+            Log.e("MainActivity", "❌ Error procesando datos de socios: ${e.message}", e)
+            0
         }
     }
     
-    private fun processPagosData(jsonString: String) {
-        try {
+    private fun processPagosData(jsonString: String): Int {
+        return try {
+            Log.d("MainActivity", "💰 Procesando JSON pagos: ${jsonString.take(100)}...")
             val jsonArray = JSONArray(jsonString)
             var pagosSincronizados = 0
+            
+            // Limpiar datos previos para sincronización completa
+            databaseHelper.clearPagos()
             
             for (i in 0 until jsonArray.length()) {
                 val pagoJson = jsonArray.getJSONObject(i)
@@ -294,10 +362,12 @@ class MainActivity : Activity() {
                 pagosSincronizados++
             }
             
-            Log.d("MainActivity", "Sincronizados $pagosSincronizados pagos")
+            Log.d("MainActivity", "✅ Sincronizados $pagosSincronizados pagos")
+            pagosSincronizados
             
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error procesando datos de pagos", e)
+            Log.e("MainActivity", "❌ Error procesando datos de pagos: ${e.message}", e)
+            0
         }
     }
     

@@ -317,6 +317,18 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return formasPago
     }
     
+    fun clearSocios() {
+        val db = writableDatabase
+        db.execSQL("DELETE FROM $TABLE_SOCIOS")
+        Log.d(TAG, "Datos de socios eliminados para sincronización")
+    }
+    
+    fun clearPagos() {
+        val db = writableDatabase
+        db.execSQL("DELETE FROM $TABLE_PAGOS")
+        Log.d(TAG, "Datos de pagos eliminados para sincronización")
+    }
+    
     fun clearAllData() {
         val db = writableDatabase
         db.execSQL("DELETE FROM $TABLE_SOCIOS")
