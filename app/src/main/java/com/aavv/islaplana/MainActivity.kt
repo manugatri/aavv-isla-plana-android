@@ -150,18 +150,33 @@ class MainActivity : Activity() {
             // Intentar conexión con el servidor PC
             val serverUrl = "http://192.168.1.107:5000" // IP del servidor PC en red local
             
+            Log.d("MainActivity", "🚀 INICIANDO SINCRONIZACIÓN con: $serverUrl")
+            
             runOnUiThread {
                 updateStatus("🌐 Conectando con servidor PC (${serverUrl})...")
             }
             
+            // Probar conexión primero
+            Log.d("MainActivity", "📡 Probando conexión con /api/status")
+            val statusJson = makeHttpRequest("${serverUrl}/api/status")
+            Log.d("MainActivity", "📡 Respuesta status: $statusJson")
+            
+            if (statusJson == null) {
+                throw Exception("No se puede conectar al servidor PC en $serverUrl")
+            }
+            
             // Descargar socios
+            Log.d("MainActivity", "👥 Descargando socios...")
             val sociosJson = makeHttpRequest("${serverUrl}/api/socios")
+            Log.d("MainActivity", "👥 Respuesta socios: ${sociosJson?.take(100) ?: "NULL"}")
             if (sociosJson != null) {
                 processSociosData(sociosJson)
             }
             
             // Descargar pagos
+            Log.d("MainActivity", "💰 Descargando pagos...")
             val pagosJson = makeHttpRequest("${serverUrl}/api/pagos")
+            Log.d("MainActivity", "💰 Respuesta pagos: ${pagosJson?.take(100) ?: "NULL"}")
             if (pagosJson != null) {
                 processPagosData(pagosJson)
             }
@@ -187,24 +202,40 @@ class MainActivity : Activity() {
     
     private fun makeHttpRequest(urlString: String): String? {
         return try {
+            Log.d("MainActivity", "🌐 HTTP REQUEST: $urlString")
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
-            connection.connectTimeout = 5000 // 5 segundos timeout
-            connection.readTimeout = 10000 // 10 segundos timeout
+            connection.connectTimeout = 10000 // 10 segundos timeout
+            connection.readTimeout = 15000 // 15 segundos timeout
+            connection.setRequestProperty("User-Agent", "AAVV-Android-App")
+            
+            Log.d("MainActivity", "🔗 Conectando a: ${connection.url}")
             
             val responseCode = connection.responseCode
+            Log.d("MainActivity", "📡 Response Code: $responseCode")
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val reader = BufferedReader(InputStreamReader(connection.inputStream))
                 val response = reader.readText()
                 reader.close()
+                Log.d("MainActivity", "✅ HTTP OK - Datos recibidos: ${response.length} chars")
                 response
             } else {
-                Log.e("MainActivity", "HTTP Error: $responseCode")
+                Log.e("MainActivity", "❌ HTTP Error: $responseCode para URL: $urlString")
+                // Leer error stream si existe
+                try {
+                    val errorReader = BufferedReader(InputStreamReader(connection.errorStream))
+                    val errorResponse = errorReader.readText()
+                    errorReader.close()
+                    Log.e("MainActivity", "Error response: $errorResponse")
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "No se pudo leer error stream")
+                }
                 null
             }
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error en HTTP request", e)
+            Log.e("MainActivity", "💥 EXCEPCIÓN en HTTP request para $urlString: ${e.message}", e)
             null
         }
     }
