@@ -79,7 +79,7 @@ class MainActivity : Activity() {
             } else {
                 // Mostrar socios existentes
                 for (socio in socios) {
-                    val status = if (socio.activo) "✅ Activo" else "❌ Inactivo" 
+                    val status = if (socio.enAlta) "✅ Activo" else "❌ Inactivo" 
                     val telefono = if (socio.telefono.isNotEmpty()) " - 📱 ${socio.telefono}" else ""
                     sociosList.add("👤 ${socio.nombre} ${socio.apellidos} - $status$telefono")
                 }
@@ -229,11 +229,11 @@ class MainActivity : Activity() {
             val sociosInfo = StringBuilder("📋 LISTA DE SOCIOS (${socios.size})\n\n")
             
             for (socio in socios) {
-                val status = if (socio.activo) "✅" else "❌"
+                val status = if (socio.enAlta) "✅" else "❌"
                 sociosInfo.append("$status ${socio.nombre} ${socio.apellidos}\n")
                 sociosInfo.append("   📱 ${socio.telefono}\n")
                 sociosInfo.append("   📧 ${socio.email}\n")
-                sociosInfo.append("   📍 ${socio.direccion}, ${socio.localidad}\n\n")
+                sociosInfo.append("   📍 ${socio.direccion}, ${socio.poblacion}\n\n")
             }
             
             val builder = android.app.AlertDialog.Builder(this)
@@ -297,11 +297,10 @@ class MainActivity : Activity() {
                     telefono = telefono,
                     email = email,
                     direccion = direccion,
+                    poblacion = "Isla Plana",
                     codigoPostal = "30868",
-                    localidad = "Isla Plana",
-                    provincia = "Murcia",
                     fechaAlta = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                    activo = true
+                    enAlta = true
                 )
                 
                 val result = databaseHelper.insertSocio(nuevoSocio)
@@ -339,7 +338,7 @@ class MainActivity : Activity() {
                     val resultadosText = StringBuilder("🔍 RESULTADOS DE BÚSQUEDA (${resultados.size})\n\n")
                     
                     for (socio in resultados) {
-                        val status = if (socio.activo) "✅" else "❌"
+                        val status = if (socio.enAlta) "✅" else "❌"
                         resultadosText.append("$status ${socio.nombre} ${socio.apellidos}\n")
                         resultadosText.append("   📱 ${socio.telefono}\n")
                         resultadosText.append("   📧 ${socio.email}\n\n")
@@ -372,8 +371,8 @@ class MainActivity : Activity() {
                 
                 for (pago in cuotasVencidas) {
                     cuotasText.append("💰 ${pago.importe}€\n")
-                    cuotasText.append("📅 Vence: ${pago.fechaVencimiento}\n")
-                    cuotasText.append("📋 ${pago.concepto}\n\n")
+                    cuotasText.append("📅 Fecha: ${pago.fecha}\n")
+                    cuotasText.append("� ${pago.nombreSocio}\n\n")
                 }
                 
                 val builder = android.app.AlertDialog.Builder(this)
@@ -403,8 +402,8 @@ class MainActivity : Activity() {
                 
                 for (pago in cuotasPorVencer) {
                     cuotasText.append("💰 ${pago.importe}€\n")
-                    cuotasText.append("📅 Vence: ${pago.fechaVencimiento}\n")
-                    cuotasText.append("📋 ${pago.concepto}\n\n")
+                    cuotasText.append("📅 Fecha: ${pago.fecha}\n")
+                    cuotasText.append("� ${pago.nombreSocio}\n\n")
                 }
                 
                 val builder = android.app.AlertDialog.Builder(this)
@@ -434,8 +433,8 @@ class MainActivity : Activity() {
                 
                 for (pago in cuotasCobradas) {
                     cuotasText.append("💰 ${pago.importe}€\n")
-                    cuotasText.append("📅 Cobrado: ${pago.fechaPago}\n")
-                    cuotasText.append("📋 ${pago.concepto}\n\n")
+                    cuotasText.append("📅 Fecha: ${pago.fecha}\n")
+                    cuotasText.append("� ${pago.nombreSocio}\n\n")
                 }
                 
                 val builder = android.app.AlertDialog.Builder(this)

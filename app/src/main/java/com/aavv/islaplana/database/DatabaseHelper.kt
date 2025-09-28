@@ -9,7 +9,7 @@ import android.util.Log
 /**
  * DatabaseHelper para AAVV Isla Plana
  * 
- * IMPORTANTE: Esta clase contiene SOLO la estructura de la base de datos.
+ * IMPORTANTE: Esta clase contiene la estructura IDÉNTICA a la base de datos del PC.
  * Los datos reales de socios y pagos se descargan desde el servidor PC
  * durante la primera sincronización para preservar la seguridad.
  */
@@ -18,44 +18,45 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     companion object {
         const val DATABASE_NAME = "aavv_isla_plana.db"
         const val DATABASE_VERSION = 1
+        private const val TAG = "DatabaseHelper"
         
-        // Tabla socios
+        // Tabla socios - ESTRUCTURA REAL DEL PC
         const val TABLE_SOCIOS = "socios"
-        const val COLUMN_SOCIOS_ID = "Id"
-        const val COLUMN_NUMERO_SOCIO = "NUMERO_SOCIO"
-        const val COLUMN_NOMBRE = "NOMBRE"
-        const val COLUMN_APELLIDOS = "APELLIDOS"
-        const val COLUMN_DNI = "DNI"
-        const val COLUMN_DIRECCION = "DIRECCION"
-        const val COLUMN_POBLACION = "POBLACION"
-        const val COLUMN_CODIGO_POSTAL = "CODIGO_POSTAL"
-        const val COLUMN_TELEFONO = "TELEFONO"
-        const val COLUMN_FORMA_PAGO = "FORMA_PAGP"
-        const val COLUMN_FECHA_ALTA = "FECHA_ALTA"
-        const val COLUMN_FECHA_BAJA = "FECHA_BAJA"
+        const val COLUMN_SOCIOS_ID = "id"
+        const val COLUMN_NUMERO_SOCIO = "numero_socio"
+        const val COLUMN_NOMBRE = "nombre"
+        const val COLUMN_APELLIDOS = "apellidos"
+        const val COLUMN_DNI = "dni"
+        const val COLUMN_DIRECCION = "direccion"
+        const val COLUMN_POBLACION = "poblacion"
+        const val COLUMN_CODIGO_POSTAL = "codigo_postal"
+        const val COLUMN_TELEFONO = "telefono"
+        const val COLUMN_FORMA_PAGO = "forma_pago"
+        const val COLUMN_FECHA_ALTA = "fecha_alta"
+        const val COLUMN_FECHA_BAJA = "fecha_baja"
         const val COLUMN_EMAIL = "email"
-        const val COLUMN_EN_ALTA = "EN_ALTA"
+        const val COLUMN_EN_ALTA = "en_alta"
         
-        // Tabla pagos
+        // Tabla pagos - ESTRUCTURA REAL DEL PC
         const val TABLE_PAGOS = "pagos"
-        const val COLUMN_PAGOS_ID = "Id"
-        const val COLUMN_FECHA = "FECHA"
-        const val COLUMN_IMPORTE = "IMPORTE"
-        const val COLUMN_ID_NUMERO_SOCIO = "ID_NUMERO_SOCIO"
+        const val COLUMN_PAGOS_ID = "id"
+        const val COLUMN_FECHA = "fecha"
+        const val COLUMN_IMPORTE = "importe"
+        const val COLUMN_ID_NUMERO_SOCIO = "id_numero_socio"
         
         // Tabla forma_pago
         const val TABLE_FORMA_PAGO = "forma_pago"
-        const val COLUMN_FORMA_PAGO_ID = "Id"
-        const val COLUMN_FORMA_PAGO_NOMBRE = "FORMA_PAGO"
+        const val COLUMN_FORMA_PAGO_ID = "id"
+        const val COLUMN_FORMA_PAGO_NOMBRE = "nombre"
         
         // Tabla codigos_postales
         const val TABLE_CODIGOS_POSTALES = "codigos_postales"
-        const val COLUMN_CP_ID = "Id"
-        const val COLUMN_CODIGO = "CODIGO"
+        const val COLUMN_CP_ID = "id"
+        const val COLUMN_CODIGO = "codigo"
     }
-    
+
     override fun onCreate(db: SQLiteDatabase) {
-        // Crear tabla socios
+        // Crear tabla socios - IDÉNTICA AL PC
         val createSociosTable = """
             CREATE TABLE $TABLE_SOCIOS (
                 $COLUMN_SOCIOS_ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,9 +66,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 $COLUMN_DNI TEXT,
                 $COLUMN_DIRECCION TEXT,
                 $COLUMN_POBLACION TEXT,
-                $COLUMN_CODIGO_POSTAL INTEGER,
+                $COLUMN_CODIGO_POSTAL TEXT,
                 $COLUMN_TELEFONO TEXT,
-                $COLUMN_FORMA_PAGO INTEGER,
+                $COLUMN_FORMA_PAGO TEXT,
                 $COLUMN_FECHA_ALTA TEXT,
                 $COLUMN_FECHA_BAJA TEXT,
                 $COLUMN_EMAIL TEXT,
@@ -75,7 +76,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             )
         """.trimIndent()
         
-        // Crear tabla pagos
+        // Crear tabla pagos - IDÉNTICA AL PC
         val createPagosTable = """
             CREATE TABLE $TABLE_PAGOS (
                 $COLUMN_PAGOS_ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,23 +102,64 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             )
         """.trimIndent()
         
-        db.execSQL(createSociosTable)
-        db.execSQL(createPagosTable)
-        db.execSQL(createFormaPagoTable)
-        db.execSQL(createCodigosPostalesTable)
-        
-        Log.d("DatabaseHelper", "Base de datos creada exitosamente")
+        try {
+            db.execSQL(createSociosTable)
+            db.execSQL(createPagosTable)
+            db.execSQL(createFormaPagoTable)
+            db.execSQL(createCodigosPostalesTable)
+            
+            // Insertar datos iniciales básicos (sin datos sensibles)
+            insertInitialData(db)
+            
+            Log.d(TAG, "Base de datos creada con estructura idéntica al PC")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creando base de datos", e)
+        }
     }
-    
+
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_SOCIOS")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_PAGOS")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_FORMA_PAGO")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_SOCIOS")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_CODIGOS_POSTALES")
         onCreate(db)
     }
+
+    private fun insertInitialData(db: SQLiteDatabase) {
+        // Insertar solo formas de pago básicas (sin datos sensibles)
+        val formasPago = listOf(
+            "Efectivo",
+            "Transferencia", 
+            "Tarjeta",
+            "Domiciliación bancaria"
+        )
+        
+        formasPago.forEach { forma ->
+            val values = ContentValues().apply {
+                put(COLUMN_FORMA_PAGO_NOMBRE, forma)
+            }
+            db.insert(TABLE_FORMA_PAGO, null, values)
+        }
+        
+        // Insertar códigos postales básicos de la zona (información pública)
+        val codigosPostales = listOf(
+            "30868", // Isla Plana
+            "30860", // Puerto de Mazarrón
+            "30870"  // Mazarrón
+        )
+        
+        codigosPostales.forEach { codigo ->
+            val values = ContentValues().apply {
+                put(COLUMN_CODIGO, codigo)
+            }
+            db.insert(TABLE_CODIGOS_POSTALES, null, values)
+        }
+        
+        Log.d(TAG, "Base de datos inicializada - Lista para sincronizar con servidor PC")
+    }
+
+    // === OPERACIONES SOCIOS ===
     
-    // MÉTODOS PARA SOCIOS
     fun insertSocio(socio: Socio): Long {
         val db = writableDatabase
         val values = ContentValues().apply {
@@ -168,37 +210,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
     
     fun getSociosActivos(): List<Socio> {
-        val socios = mutableListOf<Socio>()
-        val db = readableDatabase
-        val selection = "$COLUMN_EN_ALTA = ?"
-        val selectionArgs = arrayOf("1")
-        val cursor = db.query(TABLE_SOCIOS, null, selection, selectionArgs, null, null, "$COLUMN_APELLIDOS, $COLUMN_NOMBRE")
-        
-        cursor.use {
-            while (it.moveToNext()) {
-                val socio = Socio(
-                    id = it.getInt(it.getColumnIndexOrThrow(COLUMN_SOCIOS_ID)),
-                    numeroSocio = it.getInt(it.getColumnIndexOrThrow(COLUMN_NUMERO_SOCIO)),
-                    nombre = it.getString(it.getColumnIndexOrThrow(COLUMN_NOMBRE)) ?: "",
-                    apellidos = it.getString(it.getColumnIndexOrThrow(COLUMN_APELLIDOS)) ?: "",
-                    dni = it.getString(it.getColumnIndexOrThrow(COLUMN_DNI)) ?: "",
-                    direccion = it.getString(it.getColumnIndexOrThrow(COLUMN_DIRECCION)) ?: "",
-                    poblacion = it.getString(it.getColumnIndexOrThrow(COLUMN_POBLACION)) ?: "",
-                    codigoPostal = it.getString(it.getColumnIndexOrThrow(COLUMN_CODIGO_POSTAL)) ?: "",
-                    telefono = it.getString(it.getColumnIndexOrThrow(COLUMN_TELEFONO)) ?: "",
-                    formaPago = it.getString(it.getColumnIndexOrThrow(COLUMN_FORMA_PAGO)) ?: "",
-                    fechaAlta = it.getString(it.getColumnIndexOrThrow(COLUMN_FECHA_ALTA)) ?: "",
-                    fechaBaja = it.getString(it.getColumnIndexOrThrow(COLUMN_FECHA_BAJA)) ?: "",
-                    email = it.getString(it.getColumnIndexOrThrow(COLUMN_EMAIL)) ?: "",
-                    enAlta = it.getInt(it.getColumnIndexOrThrow(COLUMN_EN_ALTA)) == 1
-                )
-                socios.add(socio)
-            }
-        }
-        return socios
+        return getAllSocios().filter { it.enAlta }
     }
     
-    fun buscarSocios(query: String): List<Socio> {
+    fun searchSocios(query: String): List<Socio> {
         val socios = mutableListOf<Socio>()
         val db = readableDatabase
         val selection = "$COLUMN_NOMBRE LIKE ? OR $COLUMN_APELLIDOS LIKE ? OR $COLUMN_DNI LIKE ?"
@@ -228,8 +243,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
         return socios
     }
+
+    // === OPERACIONES PAGOS ===
     
-    // MÉTODOS PARA PAGOS
     fun insertPago(pago: Pago): Long {
         val db = writableDatabase
         val values = ContentValues().apply {
@@ -266,12 +282,47 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return pagos
     }
     
+    // Métodos adicionales que usa MainActivity
+    fun getCuotasVencidas(): List<Pago> {
+        // Implementación simplificada - retorna lista vacía por ahora
+        // En una implementación real, filtrarías por fecha de vencimiento
+        return emptyList()
+    }
+    
+    fun getCuotasPorVencer(): List<Pago> {
+        // Implementación simplificada - retorna lista vacía por ahora  
+        // En una implementación real, filtrarías por fechas futuras
+        return emptyList()
+    }
+    
+    fun getCuotasCobradas(): List<Pago> {
+        // Retorna todos los pagos (considerados como cobrados)
+        return getAllPagos()
+    }
+    
+    fun getAllFormasPago(): List<FormaPago> {
+        val formasPago = mutableListOf<FormaPago>()
+        val db = readableDatabase
+        val cursor = db.query(TABLE_FORMA_PAGO, null, null, null, null, null, COLUMN_FORMA_PAGO_NOMBRE)
+        
+        cursor.use {
+            while (it.moveToNext()) {
+                val formaPago = FormaPago(
+                    id = it.getInt(it.getColumnIndexOrThrow(COLUMN_FORMA_PAGO_ID)),
+                    nombre = it.getString(it.getColumnIndexOrThrow(COLUMN_FORMA_PAGO_NOMBRE)) ?: ""
+                )
+                formasPago.add(formaPago)
+            }
+        }
+        return formasPago
+    }
+    
     fun clearAllData() {
         val db = writableDatabase
         db.execSQL("DELETE FROM $TABLE_SOCIOS")
         db.execSQL("DELETE FROM $TABLE_PAGOS")
         db.execSQL("DELETE FROM $TABLE_FORMA_PAGO")
         db.execSQL("DELETE FROM $TABLE_CODIGOS_POSTALES")
-        Log.d("DatabaseHelper", "Todos los datos eliminados")
+        Log.d(TAG, "Todos los datos eliminados")
     }
 }
