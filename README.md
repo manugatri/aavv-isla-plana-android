@@ -11,6 +11,29 @@
 
 Esta aplicación Android está **100% completa y lista para desplegar** con todas las funcionalidades de la aplicación web AAVV Isla Plana, incluyendo sincronización automática con el sistema PC.
 
+### 🔧 **Compilación Automática con GitHub Actions**
+
+¡Ahora puedes compilar la aplicación automáticamente sin necesidad de tener Android Studio instalado!
+
+#### 📦 **Cómo obtener el APK:**
+
+1. **Automático**: Los commits a `main` activan la compilación automáticamente
+2. **Manual**: Ve a [Actions](https://github.com/manugatri/aavv-isla-plana-android/actions) y ejecuta "Build Android APK"
+3. **Descarga**: Usa el script `./download_apk.sh` o descarga desde GitHub Actions
+
+```bash
+# Opción 1: Script automático (requiere GitHub CLI)
+./download_apk.sh
+
+# Opción 2: GitHub CLI directo
+gh run download --repo manugatri/aavv-isla-plana-android
+
+# Opción 3: Manual desde web
+# Ve a: https://github.com/manugatri/aavv-isla-plana-android/actions
+```
+
+[![Build Status](https://github.com/manugatri/aavv-isla-plana-android/workflows/Build%20Android%20APK/badge.svg)](https://github.com/manugatri/aavv-isla-plana-android/actions)
+
 ### ✨ **Características Principales**
 
 - 📊 **Base de datos SQLite completa** con todas las tablas (socios, pagos, historial)
