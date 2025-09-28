@@ -235,9 +235,20 @@ class MainActivity : Activity() {
                 throw Exception("No se pudieron descargar los pagos del servidor")
             }
             
+            // === SINCRONIZACIÓN BIDIRECCIONAL ===
+            // Enviar datos locales al servidor (Android → PC)
+            runOnUiThread {
+                updateStatus("📤 Enviando datos locales al servidor...")
+            }
+            
+            Log.d("MainActivity", "🔄 INICIANDO SINCRONIZACIÓN BIDIRECCIONAL")
+            val datosEnviados = sendDataToServer(serverUrl)
+            
+            val syncMode = if (datosEnviados) "bidireccional" else "unidireccional"
+            
             runOnUiThread {
                 val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                val mensaje = "✅ Sincronizados: $sociosSincronizados socios, $pagosSincronizados pagos"
+                val mensaje = "✅ Sync $syncMode: ⬇️ $sociosSincronizados socios, $pagosSincronizados pagos ${if (datosEnviados) "⬆️ datos enviados" else ""}"
                 updateStatus("$mensaje - $timestamp")
                 Toast.makeText(this@MainActivity, mensaje, Toast.LENGTH_LONG).show()
                 loadSociosData() // Recargar la vista
@@ -678,6 +689,168 @@ class MainActivity : Activity() {
     private fun updateStatus(message: String) {
         statusTextView.text = message
         Log.d("MainActivity", "Status: $message")
+    }
+    
+    // === MÉTODOS PARA SINCRONIZACIÓN BIDIRECCIONAL ===
+    
+    private fun sendDataToServer(serverUrl: String): Boolean {
+        return try {
+            Log.d("MainActivity", "📤 ENVIANDO DATOS AL SERVIDOR: $serverUrl")
+            
+            var datosEnviados = false
+            
+            // Enviar socios nuevos/modificados
+            val sociosResult = sendSociosToServer(serverUrl)
+            if (sociosResult) {
+                Log.d("MainActivity", "✅ Socios enviados correctamente")
+                datosEnviados = true
+            }
+            
+            // Enviar pagos nuevos
+            val pagosResult = sendPagosToServer(serverUrl)
+            if (pagosResult) {
+                Log.d("MainActivity", "✅ Pagos enviados correctamente")
+                datosEnviados = true
+            }
+            
+            datosEnviados
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Error enviando datos al servidor", e)
+            false
+        }
+    }
+    
+    private fun sendSociosToServer(serverUrl: String): Boolean {
+        return try {
+            val socios = databaseHelper.getAllSocios()
+            if (socios.isEmpty()) {
+                Log.d("MainActivity", "📭 No hay socios para enviar")
+                return true
+            }
+            
+            val jsonArray = JSONArray()
+            for (socio in socios) {
+                val socioJson = JSONObject().apply {
+                    put("numero_socio", socio.numeroSocio)
+                    put("nombre", socio.nombre)
+                    put("apellidos", socio.apellidos)
+                    put("dni", socio.dni)
+                    put("direccion", socio.direccion)
+                    put("poblacion", socio.poblacion)
+                    put("codigo_postal", socio.codigoPostal)
+                    put("telefono", socio.telefono)
+                    put("forma_pago", socio.formaPago)
+                    put("fecha_alta", socio.fechaAlta)
+                    put("fecha_baja", socio.fechaBaja)
+                    put("email", socio.email)
+                    put("en_alta", socio.enAlta)
+                }
+                jsonArray.put(socioJson)
+            }
+            
+            val requestData = JSONObject().apply {
+                put("socios", jsonArray)
+            }
+            
+            val response = makeHttpPostRequest("$serverUrl/api/sync/socios", requestData.toString())
+            if (response != null) {
+                Log.d("MainActivity", "📤 Respuesta envío socios: ${response.take(200)}")
+                true
+            } else {
+                Log.e("MainActivity", "❌ Error enviando socios al servidor")
+                false
+            }
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Error preparando socios para envío", e)
+            false
+        }
+    }
+    
+    private fun sendPagosToServer(serverUrl: String): Boolean {
+        return try {
+            val pagos = databaseHelper.getAllPagos()
+            if (pagos.isEmpty()) {
+                Log.d("MainActivity", "📭 No hay pagos para enviar")
+                return true
+            }
+            
+            val jsonArray = JSONArray()
+            for (pago in pagos) {
+                val pagoJson = JSONObject().apply {
+                    put("fecha", pago.fecha)
+                    put("importe", pago.importe)
+                    put("id_numero_socio", pago.idNumeroSocio)
+                }
+                jsonArray.put(pagoJson)
+            }
+            
+            val requestData = JSONObject().apply {
+                put("pagos", jsonArray)
+            }
+            
+            val response = makeHttpPostRequest("$serverUrl/api/sync/pagos", requestData.toString())
+            if (response != null) {
+                Log.d("MainActivity", "📤 Respuesta envío pagos: ${response.take(200)}")
+                true
+            } else {
+                Log.e("MainActivity", "❌ Error enviando pagos al servidor")
+                false
+            }
+            
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Error preparando pagos para envío", e)
+            false
+        }
+    }
+    
+    private fun makeHttpPostRequest(urlString: String, jsonData: String): String? {
+        return try {
+            Log.d("MainActivity", "📡 HTTP POST: $urlString")
+            Log.d("MainActivity", "📡 Datos: ${jsonData.take(200)}...")
+            
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 20000
+            connection.readTimeout = 30000
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("User-Agent", "AAVV-Android-App/1.0")
+            connection.doOutput = true
+            
+            // Enviar datos JSON
+            val outputStream = connection.outputStream
+            outputStream.write(jsonData.toByteArray(Charsets.UTF_8))
+            outputStream.flush()
+            outputStream.close()
+            
+            val responseCode = connection.responseCode
+            Log.d("MainActivity", "📡 POST Response Code: $responseCode")
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val reader = BufferedReader(InputStreamReader(connection.inputStream))
+                val response = reader.readText()
+                reader.close()
+                Log.d("MainActivity", "✅ POST OK - Respuesta: ${response.take(200)}")
+                response
+            } else {
+                Log.e("MainActivity", "❌ POST Error: $responseCode")
+                try {
+                    val errorReader = BufferedReader(InputStreamReader(connection.errorStream))
+                    val errorResponse = errorReader.readText()
+                    errorReader.close()
+                    Log.e("MainActivity", "Error response: $errorResponse")
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "No se pudo leer error stream")
+                }
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "💥 Error en POST request: ${e.message}", e)
+            null
+        }
     }
     
     private fun showSimpleFallback(error: Exception) {
